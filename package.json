@@ -1,0 +1,23 @@
+{
+  "name": "chatcoop-proxy",
+  "version": "1.0.0",
+  "description": "Fan-out webhook proxy for LiveKit -> cooperative controllers + Whisper API nginx proxy",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "dotenv": "^17.2.4",
+    "express": "^4.21.0",
+    "livekit-server-sdk": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.26",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.2"
+  }
+}
