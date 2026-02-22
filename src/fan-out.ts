@@ -31,7 +31,7 @@ export class FanOutService {
 
     const results = await Promise.allSettled(
       coops.map(async (coop) => {
-        const url = `https://${coop.announce}/backend/v1/chatcoop/livekit-webhook`;
+        const url = `https://${coop.announce}/backend/v1/extensions/chatcoop/livekit-webhook`;
 
         try {
           await axios.post(url, rawBody, {
