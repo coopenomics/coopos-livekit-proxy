@@ -30,48 +30,62 @@ export class FanOutService {
       return { total: 0, success: 0, failed: 0, errors: [] };
     }
 
-    const results = await Promise.allSettled(
-      coops.map(async (coop) => {
-        // Временное исключение для кооператива voskhod (только в development)
-        let url: string;
-        if (coop.username === 'voskhod' && process.env.NODE_ENV === 'development') {
-          url = 'http://176.222.53.50:2998/v1/extensions/chatcoop/livekit-webhook';
-        } else {
-          const prefix = this.config.apiPrefix ? `/${this.config.apiPrefix}` : '';
-          url = `https://${coop.announce}${prefix}/v1/extensions/chatcoop/livekit-webhook`;
-        }
+    // Парсим rawBody один раз для всех отправок
+    const jsonBody = JSON.parse(rawBody);
+    const results: FanOutItemResult[] = [];
+    const errors: Array<{ coop: string; error: string }> = [];
 
+    // Обрабатываем каждый кооператив отдельно с retry логикой
+    for (const coop of coops) {
+      let success = false;
+      let lastError: string = '';
+
+      // Временное исключение для кооператива voskhod (только в development)
+      let url: string;
+      if (coop.username === 'voskhod' && process.env.NODE_ENV === 'development') {
+        url = 'http://176.222.53.50:2998/v1/extensions/chatcoop/livekit-webhook';
+      } else {
+        const prefix = this.config.apiPrefix ? `/${this.config.apiPrefix}` : '';
+        url = `https://${coop.announce}${prefix}/v1/extensions/chatcoop/livekit-webhook`;
+      }
+
+      // Пытаемся отправить до 3 раз
+      for (let attempt = 1; attempt <= 3; attempt++) {
         try {
-          await axios.post(url, rawBody, {
+          await axios.post(url, jsonBody, {
             headers: {
-              'Content-Type': 'application/webhook+json',
+              'Content-Type': 'application/json',
               // Пробрасываем оригинальный заголовок авторизации LiveKit
               ...(authHeader ? { Authorization: authHeader } : {}),
             },
             timeout: this.config.fanOutTimeoutMs,
-            // Отправляем как строку, чтобы сохранить оригинальную подпись
-            transformRequest: [(data: string) => data],
           });
 
-          return { coop: coop.username, success: true };
+          success = true;
+          console.log(`[FanOut] Успешно отправлено на ${coop.username} с ${attempt} попытки`);
+          break; // Выходим из цикла retry при успехе
+
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
-          console.error(`[FanOut] Ошибка отправки на ${coop.username} (${url}):`, message);
-          return { coop: coop.username, success: false, error: message };
+          lastError = message;
+
+          if (attempt < 3) {
+            console.warn(`[FanOut] Попытка ${attempt} для ${coop.username} не удалась, повторяем:`, message);
+            // Небольшая задержка перед следующей попыткой
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } else {
+            console.error(`[FanOut] Все 3 попытки для ${coop.username} не удались (${url}):`, message);
+          }
         }
-      })
-    );
+      }
 
-    const succeeded = results.filter(
-      (r) => r.status === 'fulfilled' && r.value.success
-    ).length;
+      results.push({ coop: coop.username, success });
+      if (!success) {
+        errors.push({ coop: coop.username, error: lastError || 'unknown' });
+      }
+    }
 
-    const errors = results
-      .filter((r): r is PromiseFulfilledResult<FanOutItemResult> =>
-        r.status === 'fulfilled' && !r.value.success
-      )
-      .map((r) => ({ coop: r.value.coop, error: r.value.error || 'unknown' }));
-
+    const succeeded = results.filter(r => r.success).length;
     console.log(`[FanOut] Переслано: ${succeeded}/${coops.length} успешно`);
 
     return {
