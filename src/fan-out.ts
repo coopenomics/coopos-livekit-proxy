@@ -32,6 +32,7 @@ export class FanOutService {
 
     // Парсим rawBody один раз для всех отправок
     const jsonBody = JSON.parse(rawBody);
+    console.log(jsonBody)
     const results: FanOutItemResult[] = [];
     const errors: Array<{ coop: string; error: string }> = [];
 
