@@ -32,8 +32,14 @@ export class FanOutService {
 
     const results = await Promise.allSettled(
       coops.map(async (coop) => {
-        const prefix = this.config.apiPrefix ? `/${this.config.apiPrefix}` : '';
-        const url = `https://${coop.announce}${prefix}/v1/extensions/chatcoop/livekit-webhook`;
+        // Временное исключение для кооператива voskhod (только в development)
+        let url: string;
+        if (coop.username === 'voskhod' && process.env.NODE_ENV === 'development') {
+          url = 'http://176.222.53.50:2998/v1/extensions/chatcoop/livekit-webhook';
+        } else {
+          const prefix = this.config.apiPrefix ? `/${this.config.apiPrefix}` : '';
+          url = `https://${coop.announce}${prefix}/v1/extensions/chatcoop/livekit-webhook`;
+        }
 
         try {
           await axios.post(url, rawBody, {
