@@ -22,6 +22,9 @@ export interface Config {
 
   /** Таймаут при пересылке webhook на контроллер (ms) */
   fanOutTimeoutMs: number;
+
+  /** Префикс пути к API контроллера (без слеша) */
+  apiPrefix: string;
 }
 
 function getEnvOrThrow(key: string): string {
@@ -45,5 +48,6 @@ export function loadConfig(): Config {
     registratorContract: getEnvOrDefault('REGISTRATOR_CONTRACT', 'registrator'),
     coopRefreshIntervalMs: parseInt(getEnvOrDefault('COOP_REFRESH_INTERVAL_MS', '300000'), 10),
     fanOutTimeoutMs: parseInt(getEnvOrDefault('FAN_OUT_TIMEOUT_MS', '5000'), 10),
+    apiPrefix: getEnvOrDefault('API_PREFIX', 'backend'),
   };
 }

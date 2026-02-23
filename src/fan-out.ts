@@ -7,7 +7,8 @@ import type { Config } from './config';
  * на контроллеры всех активных кооперативов.
  *
  * Адрес контроллера конструируется из поля announce кооператива:
- *   https://{announce}/backend/v1/chatcoop/livekit-webhook
+ *   https://{announce}/{API_PREFIX}/v1/extensions/chatcoop/livekit-webhook
+ *   Где API_PREFIX берется из переменной окружения API_PREFIX (по умолчанию: backend)
  */
 export class FanOutService {
   constructor(
@@ -31,7 +32,8 @@ export class FanOutService {
 
     const results = await Promise.allSettled(
       coops.map(async (coop) => {
-        const url = `https://${coop.announce}/v1/extensions/chatcoop/livekit-webhook`;
+        const prefix = this.config.apiPrefix ? `/${this.config.apiPrefix}` : '';
+        const url = `https://${coop.announce}${prefix}/v1/extensions/chatcoop/livekit-webhook`;
 
         try {
           await axios.post(url, rawBody, {
